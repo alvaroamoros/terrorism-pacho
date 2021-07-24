@@ -1,0 +1,410 @@
+---
+title: "Financing sources of rebel groups"
+author: "Álvaro Ámoros Rodríguez"
+date: "28/6/2021"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pkgs <- c('knitr', 'stargazer')
+repmis::LoadandCite(pkgs, file = 'Rpackages.bib')
+
+library(readxl)
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(tidytext)
+library(stargazer)
+library(gridExtra)
+
+
+
+options(digits = 2)
+
+```
+# Introduction
+
+## *Summary*
+
+*The aim of this paper is to understand how different types of rebel organizations rely of divergent paths to obtain economic resources to finance their fight against the state. Previous research has proven that the lack of territorial control is a key factor to understand the different types of violent actions that rebel groups engage in. I argue that territorial control also determines the type of actions that rebel groups engage in to obtain economic resources. While rebel groups with territorial control as guerrillas have to their disposal a broad spectrum of economic activities, as producing and smuggling illegal goods or taxing local populations, terrorist groups without territorial control will be constrain in their activities by their clandestine nature. Hence, least sophisticated economic activities, as robberies or extortion, will be more common among groups without territorial control. To test this hypothesis, I will rely on data from the Global Terrorism Database in combination with some text analysis techniques.*
+
+
+```{r DATA, include=FALSE, echo=FALSE}
+# Load data sets
+GTD_groups <- read_excel("dataset GTD groups nov2020.xlsx")
+GTD_attacks <- read_csv("globalterrorismdb_0718dist.csv")
+# PREPARING DATASETS
+
+# keep only groups that are in both datasets
+GTD_attacks <- GTD_attacks %>%
+  filter(gname %in% GTD_groups$gname,
+         !is.na(gname))
+
+
+GTD_groups<- GTD_groups %>%
+  filter(gname %in% GTD_attacks$gname,
+         !is.na(gname))
+GTD_groups <- GTD_groups[-314,] # The same terrorist group appears twice.
+
+
+# Merge the dataset by name
+GTD <- merge(GTD_attacks, GTD_groups, by = "gname")
+
+# Drop cases withput description
+GTD <- GTD %>%
+  filter(!is.na(summary),
+         !is.na(control),
+         iyear > 1997)
+
+```
+## Theory
+
+Luis de la Calle and Ignacio Sánchez Cuenca (2011) have pointed out that the type of violent actions rebel groups engage on are strongly determined by their ability to establish territorial control inside the borders of the state they are fighting against. The lack or not of territorial control would be ultimately a result of the asymmetry in forces between rebels and state. In underdeveloped and week states, rebel contestants will be able to assert territorial control more easily and form guerrillas, on the contrary, in more developed and strong states rebels will need to operate as clandestine organizations, hence forming terrorist groups. According to the authors, they main features which distinguish terrorist organizations from other type of rebel groups, is precisely the lack of territorial control, which signals an extreme asymmetry in forces between the state ant the rebels. Terrorist groups will respond to this asymmetry relying on very specific forms of violence, which generally do not lead to direct confrontation with the state, such as the use of IEDs, targeted assassination or kidnappings.
+
+But the actions of rebel groups are not restricted to violent attacks, actions targeted on obtaining resources are also part of their normal activities. As it happens with violent actions, I claim that the type of economic actions in which rebel groups engage will be determined by their relative position of power in front of the state. Hence, rebels with territorial control, as guerrillas, will be able to engage in more sophisticated activities that can be easily develop in their own territories, as, for example, producing or smuggling drugs. This type of activities, besides probably been more profitable, also entitle a lower level or risk when compared, for example, to bank robberies. Freeman (2011) and Horgan & Taylor (1999) have showed that bank robberies are among the most common sources of financing for clandestine organizations. This is so because they require a very low level of internal organizational and sophistication, and can be carried out in a small window of time, without necessary engagements with state forces, hence becoming a predilect method for week and undercover organizations.
+
+Other type of economic activities commonly associated to rebel groups are extortion and kidnapping. Both require a higher level of sophistication when compared to robberies. Extortion is the simplest of both, but it still requires some method to contact and communicate with the victim, as well as some safe way to recollect the payments. Kidnappings are even more complex, they require precise information about the victim, as well as a safe place to keep it, and  a channel of communication with whomever is supposed to pay the ransom. 
+
+The main hypothesis of this paper is that there is a correlation between the degree of power asymmetry between the state and rebel groups, and the sophistication of the economic activities the later carry out. Robberies will be the most common type of economic activity for terrorist groups and will be scarcely used by groups with territorial control due to its high risk. Extortion will be the second most common activity for terrorist groups as it requires a more sophisticated structure. Finally, Kidnappings with economic objectives will be among the least used activities for terrorist groups, as they require a save place to keep the victim during negotiations, as well as safe channels of communication.
+
+
+
+## Data
+
+The Global Terrorism Dataset registers over 180.000 incidents related to the actions of rebel groups all over the world from 1970 to 1997. The dataset codes as terrorist organizations a broad set of non-state violent political organizations. To distinguish terrorist organizations from other type of rebel groups with territorial control, I will use the dataset provided by Ignacio Sánchez Cuenca, which includes information about the territorial control of over 300 groups. I will merge the two datasets and keep only those observations for which there is information about their territorial control, as well as a summary description of the incident (to be able to conduct text analysis). As almost none incident happened before 1997 includes summary information, I will drop the observations prior to that year as well. The result is a dataset with 41.988 incidents committed by 193 different organizations, of which 63 are clandestine ones and 130 have some sort of territorial control inside the borders of the state they are fighting against.  OF the overall number of incidents, 37.848 have been carried out by organizations with territorial control, while 3.999 have been conducted by terrorist organizations. All the registered incidents happened between 1997 and 2017.
+
+
+```{r SUMMARY DATA, echo=FALSE, include=FALSE}
+total_incidents <- nrow(GTD)
+
+GTD %>%
+  filter(control == 1) %>%
+  distinct(gname) %>%
+  nrow()
+
+GTD %>%
+  filter(control == 0) %>%
+  distinct(gname) %>%
+  nrow()
+
+GTD %>%
+  filter(control == 1) %>%
+  distinct(eventid) %>%
+  nrow()
+
+GTD %>%
+  filter(control == 0) %>%
+  distinct(eventid) %>%
+  nrow()
+
+```
+# Analysis
+
+Graph 1 shows the distribution of incidents over time, for both groups with territorial control and without. From 1997 to 2003 the number of attacks committed by rebel groups with territorial control is quite stable. After 2003 there is a constant increase in those types of attacks, probably boosted by the US invasion of Iraq. After the Arab spring (2010-2012) there is an extreme increase in attacks of terrorist groups with territorial control, that peaks in 2015, coinciding with the most violent period of the Syrian Civil War, and starts dropping after 2015 and the defeat of ISIS. Attacks by terrorist groups without territorial control show a similar trend.  There is a first peak of attacks in 2002 after the US invasion of Afghanistan, followed by a decline that stopped in 2003 with the invasion of Iraq. The late 2000s seemed to be the period with leas terrorist attacks, but a violent increase in attacks happens again after the Arab spring, peeking in 2015 and then starting to decrease after the fall of ISIS. 
+
+Graph 2 shows the proportion of attacks committed by rebel groups with and without territorial control by region (regions with less than 100 incidents registered where dropped).  In the regions of South America, Southeast Asia, and Sub-Saharan Africa, most of the attacks are committed by rebels with some kind of territorial control. The high proportion of attacks committed by organizations with territorial control in those regions, is partly due to the weakness of the states in the region. South Asia, Eastern Europe, and the Middle East and Northern Africa suffer of attacks from both types of organizations in similar proportions. Finally, in western Europe, there is almost exclusively cases of attacks from terrorist groups without territorial control.
+
+
+```{r GRAPH 1, echo=FALSE}
+
+graph_1 <- GTD %>%
+  mutate(control = as.character(control)) %>%
+  count(control, iyear) %>%
+  group_by(control) %>%
+  mutate(percent = n / sum(n)) %>%
+  ungroup %>%
+  ggplot(aes(iyear, percent, color = control)) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(labels = percent_format()) +
+  ggtitle("Graph 1: By year") +
+  theme_minimal() +
+  labs(x = "Year", y = "% of attacks", color = "")  
+
+
+graph_2 <- GTD %>%
+  group_by(region_txt) %>%
+  mutate(n = n()) %>%
+  filter(n > 100) %>%
+  ungroup() %>%
+  mutate(control = as.character(control)) %>%
+  count(control, region_txt) %>%
+  group_by(control) %>%
+  mutate(percent = n / sum(n)) %>%
+  ungroup %>%
+  ggplot(aes(x = reorder(region_txt, percent), y =percent, fill = control)) +
+  geom_bar(position = "fill", stat = "identity") +
+  scale_y_continuous(labels = percent_format()) +
+  ggtitle("Graph 2: By region") +
+  labs(x = "Region", y = "Attacks", color = "")  +
+  theme_minimal() +
+  coord_flip()
+
+graph_3 <- GTD %>%
+  mutate(region_txt = as.character(region_txt)) %>%
+  count(region_txt, iyear) %>%
+  group_by(region_txt) %>%
+  mutate(percent = n / sum(n)) %>%
+  filter(n > 100) %>%
+  ungroup %>%
+  ggplot(aes(iyear, percent, color = region_txt)) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(labels = percent_format()) +
+  ggtitle("Graph 1: By year") +
+  theme_minimal() +
+  labs(x = "Year", y = "% of attacks", color = "")  
+
+
+
+
+
+```
+
+```{r GRAPH 2, echo=FALSE, fig.height=6, fig.width=12, fig.align="center"}
+
+grid.arrange(graph_1, graph_2, top= "Incidence of attacks", ncol =2)
+
+```
+
+## Text analysis
+
+To analyse the text contained in the summaries describing the incidents, I will generate a matrix with all the words contained in the *summary*" variable. I will drop al *stop words*, all numbers and dates, as well as all geographical locations or references. The result is a dataset with over 1 million words as rows, and the 146 columns of the GTD. To be able to compare the different incidences of words in summaries describing incidents of both groups with territorial control and without, I will calculate the *odds ratio* of each word with relation to the variable of territorial control.
+
+Tables 1 and 2 show the words wit the highest and the lowest odds ratio respectively for terrorist groups without any kind of territorial control. To avoid certain words that do not add any valuable insight, I have added two restrictions to the tables. First, to avoid the appearance of certain words with very low frequency but very high odds ratios, I will require all words shown in tables 1 and 2 to appear at least thousand times in the overall Matrix. Second, to avoid the words with the lowest odds ratio being names of failed states or regions (as Afghanistan, Somalia or Mogadishu), in which any rebel group will almost automatically be able to hold  some kind of territorial control, or the names of the  groups operating in those states (as ISIS or the Taliban), I will require each word to appear at leas 100 times in each type of rebel group (with territorial control and without territorial control).
+
+Table 1 shows the five words with the highest odds ratios for terrorist groups without territorial control. The word with the highest odds ratio is *bomb*, which usually appears in summaries describing incidents with explosions provoked by IEDs. This supports previous research that identifies bombings as the preferred type of violent action of terrorist groups without territorial control. The second word with the highest odds ratio is *stated*, most of the summaries containing this word, describe or include some kid of reference of statements given by the rebel group after the registered incident. This points out the importance that publicizing their actions has for terrorist groups. As many of their actions do not pursue any direct military goals, but rather search to generate some kind of psychological impact in the public or in certain state institutions, it is fundamental for terrorist organizations to publicize their attacks. The third word, *damaged*, appears mainly in summaries related to bombing in which some property has been damage. The fourth word, with and odds ratio of 1.9 is *army*, and is included mainly in summaries that describe incidents in which a national army was targeted. These last results are rather strange, and suggest that terrorist groups without territorial control engage more frequently in actions against state armies that their rebel counterparts with territorial control. The last word in the list is *carried*, which usually appears in summaries were a statement about the nature of the attack is quoted. 
+
+Table 2 shows the 5 words with the lowest odds ratios, hence negatively correlated with the summaries describing incidents committed by terrorist groups without territorial control. The word with the lowest odds ratio is *attacked*, which is usually included in summaries which describe the assault of specific locations or facilities. This supports the theoretical expectations as those types of actions should be more common among rebel groups with territorial control as guerrillas. The next three words are *attributed, sources* and *unknown*, all three are usually included in summaries that describe incidents for which non group has claimed its responsibility. This supports the idea, present in Table 1, that groups with territorial control do not have any specific interest in publicizing their actions, as their attacks pursue specific military objectives. The last word *village* points out to the rural nature of rebel groups with territorial control.
+
+This first text analysis helps to build a general picture of the different types of actions in which groups with and without territorial control engage. The findings point out that the most significant difference in actions committed by both types of rebel groups lies on the type of violence (bombs vs attacks), while the second most significant difference points out to the objectives of those attacks. Groups with territorial control as guerrillas, aim their actions towards specific military objective, hence they are not especially interested in any form of publicity and do not generate specific statements claiming their attacks. On the other hand, terrorist groups, as they lack the capacity to carryout operations with military objectives, can rely only in the psychological impact of their attacks, hence they are committed with publicizing them and reclaiming their authorship.
+
+
+
+
+```{r PREPARING TEXT DATA, echo=FALSE, include=FALSE}
+date.pattern <- ' ?(0|1)?[1-9]/([0-9]{4}|[0-9]{2}) ?'
+number.pattern <- '[\\d-]'
+single.pattern <- "(^| ).( |$)"
+
+
+summary_words <- GTD %>%
+  mutate(summary = str_replace_all(summary, date.pattern , ""))  %>%
+  mutate(summary = str_replace_all(summary, number.pattern , ""))  %>%
+  mutate(summary = str_replace_all(summary, single.pattern , ""))  %>%
+  unnest_tokens(word, summary, token = "words")
+
+summary_words <- summary_words %>%
+  filter(!word %in% stop_words$word & !str_detect(word, "^\\d+$")) %>%
+  mutate(word = str_replace(word, "^'", ""))
+
+
+summary_words <- summary_words %>%
+  mutate(terrotory = ifelse(control == 1, "Territorial_con", "No_territroail_con"))
+
+control_or <- summary_words %>%
+    filter(word != "west",
+         word != "north",
+         word != "pakistan",
+         word != "Liberation",
+         word != "liberation",
+         word != "united") %>%
+  count(word, terrotory) %>%
+  pivot_wider(names_from = "terrotory", values_from = "n", values_fill = 0) %>%
+  mutate(or = (No_territroail_con + 0.5) / (sum(No_territroail_con) - No_territroail_con + 0.5) / 
+           ( (Territorial_con + 0.5) / (sum(Territorial_con) - Territorial_con + 0.5)))
+
+```
+
+```{r COMMON WORDS, echo=FALSE, include=TRUE}
+
+control_or %>% filter(No_territroail_con + Territorial_con > 1000 & No_territroail_con > 100 & Territorial_con > 100) %>%
+  arrange(desc(or))%>% head(5) %>%  knitr::kable(caption = "Highest ratio. Groups without territorial control", align = "l", col.names  = c("Word", "N. Control", "N. No Control","Odds Ratio"))
+
+
+
+
+control_or %>% filter(No_territroail_con + Territorial_con > 1000 & No_territroail_con >100 & Territorial_con > 100) %>%
+  arrange((or)) %>%  head(5) %>%  knitr::kable(caption = "Lowest ratio. Groups without territorial control", align = "l", col.names  = c("Word", "N. Control", "N. No Control","Odds Ratio"))
+
+
+
+
+```
+
+
+```{r EXTRACT SUMMARIES, echo=FALSE, include=FALSE}
+ grep("attacked", GTD$summary, value = TRUE) %>% head(100)
+
+GTD %>%
+  filter(attacktype1 == 6) %>% summarise(summary)
+
+``` 
+
+
+### Financing
+
+Besides strictly violent actions, rebel groups engage in specific activities with the aim of obtaining economic resources. The lack of territorial control will be a key factor in determining the kind of actions this groups can undertake. Doe to their lack of territorial control, and clandestine nature, terrorist groups will rely on the least sophisticated activities to obtain resources.  Of those, the simplest one is robbery, as it does not require any complex internal structure or any specific information. The next activity in the continuum of sophistication would be extortion, which requires a system to contact the victims, communicate with them, and a safe method to recollect the payments. The third most sophisticated activity would be kidnapping with economic aim, as it requires specific information about the victim, a method of communication with whomever is going to pay the ransom, a save place in which to retain the victim etc… 
+
+Of those activities, the only one registered in the GTD is Kidnapping. But looking closer to the summaries of incidents coded as kidnapping, one can see that no all kidnappings have economic aims. In some cases, the victim is immediately executed without asking for any kind of ransom, in others, the victim or victims are used to bargain for military or political demands. For the incidents of robbery and extortion, there is no specific variable.
+
+To capture these different types of incidents, I will combine text analysis with other variables already contained in the GTD. For the least sophisticated of all economic activities, robberies, I will rely exclusively on text analysis. I will code as robbery all incidents in which their summaries include one of the subsequent words. *"bank", "robbery", "theft", "break-in", "burglary", "heist", "looting"* and *"larceny"*. Regarding extortion, the word is used in many summaries to describe incidents of plane extortion and to describe actions of retaliation against civilians that refused to collaborate with the extortionists, but it is used as well in situations of kidnappings in which *extortion money* is demanded. To distinguish regular extortion from kidnaps, I will code as extortion only those incidents in which the words *"extortion", "shakedown*, *“payment” * and *"money"* appear, but that are neither coded as kidnappings or as robberies. Finally, to capture kidnappings with economic aims, I will code as kidnappings all the incidents that are defined as kidnappings in the variable *attacktype1*, and in which some of the words *"extortion", "shakedown*, *“payment” * and *"money"* appear. 
+
+Table 3 includes the frequencies and odds ratios of al the words previously mentioned for incidents conducted by terrorist groups without territorial control. The results show that the word *bank* has an extremely high odds ratio of 18.3, indicating that bank robberies are an economic activity deeply linked to the lack of territorial control and to the lack of sophistication of armed groups. The rest of the words have odds ratios below 1, indicating that they are more common in summaries of incidents conducted by groups with territorial control, although some of those words have significantly low overall frequencies in the word matrix. After the word *bank* the next three words with the highest odds ratios refer exclusively to economic related incidents and they are *money, payment, and extortion*. Finally, the last four words, with the lowest odds ratios, are related to kidnapping.
+
+
+
+```{r FINANCING SUMMARIES 1, echo=FALSE}
+
+stealing <- c("bank", "robbery", "theft", "break-in", "burglary", "heist", "looting", "larceny")
+extortion <- c("extortion", "shakedown", "money", "payment")
+kidnap <- c("kidnap", "kidnapping", "capture", "hijack", "abducted")
+all_words <- c("bank", "robbery", "theft", "break-in", "burglary", "heist", "looting", "larceny", "extortion", "shakedown", "money", "payment",
+               "kidnap", "kidnapping", "capture", "hijack", "abducted", "abduction")
+
+# Odds ration stelaing
+
+x <- control_or %>% filter(word %in% all_words) %>%
+  filter( (Territorial_con + No_territroail_con) > 30) %>%
+  arrange(desc(or))
+  
+  
+y <- control_or %>% filter(word %in% extortion ) %>%
+  filter( (Territorial_con + No_territroail_con) > 10) %>%
+  arrange(desc(or))
+    
+z <- control_or %>% filter(word %in% kidnap ) %>%
+  filter( (Territorial_con + No_territroail_con) > 10) %>%
+  arrange(desc(or))
+
+rbind(x) %>%
+  knitr::kable(caption = "Economic Incidents", align = "l", col.names  = c("Word", "Territorial control", "No territorial control", "Odds ratio."))
+
+
+
+```
+
+
+
+
+```{r FINANCING SUMMARIES 2, echo=FALSE, include=FALSE}
+# Preparing data
+# Robbery
+t <- grep("bank", GTD$summary, value = FALSE) 
+GTD$robbery <- 0
+GTD$robbery[t] <- 1
+t <- grep("robbery", GTD$summary, value = FALSE) 
+GTD$robbery[t] <- 1
+t <- grep("theft", GTD$summary, value = FALSE) 
+GTD$robbery[t] <- 1
+t <- grep("burglary", GTD$summary, value = FALSE) 
+GTD$robbery[t] <- 1
+t <- grep("heist", GTD$summary, value = FALSE) 
+GTD$robbery[t] <- 1
+t <- grep("holdup", GTD$summary, value = FALSE) 
+GTD$robbery[t] <- 1
+t <- grep("looting", GTD$summary, value = FALSE) 
+GTD$robbery[t] <- 1
+
+
+# *"extortion", "shakedown* and *"fraud"*
+t <- grep("extortion", GTD$summary, value = FALSE) 
+GTD$extortion <- 0
+GTD$extortion[t] <- 1
+
+t <- grep("extort", GTD$summary, value = FALSE) 
+GTD$extortion[t] <- 1
+
+t <- grep("shakedown", GTD$summary, value = FALSE) 
+GTD$extortion[t] <- 1
+
+t <- grep("payment", GTD$summary, value = FALSE) 
+GTD$extortion[t] <- 1
+
+t <- grep("money", GTD$summary, value = FALSE) 
+GTD$extortion[t] <- 1
+
+GTD <- GTD %>%
+  mutate(extortion = ifelse(GTD$attacktype1 == 6, 0, GTD$extortion))
+
+
+# *"kidnap", "kidnapping”, * and *"hijack"*
+t <- grep("extortion", GTD$summary, value = FALSE) 
+GTD$kidnap <- 0
+GTD$kidnap[t] <- 1
+
+t <- grep("payment", GTD$summary, value = FALSE) 
+GTD$kidnap[t] <- 1
+
+t <- grep("money", GTD$summary, value = FALSE) 
+GTD$kidnap[t] <- 1
+
+t <- grep("ransom", GTD$summary, value = FALSE) 
+GTD$kidnap[t] <- 1
+
+t <- grep("rescue", GTD$summary, value = FALSE) 
+GTD$kidnap[t] <- 1
+
+t <- grep("extort", GTD$summary, value = FALSE) 
+GTD$kidnap[t] <- 1
+
+GTD <- GTD %>%
+  mutate(kidnap = ifelse(GTD$attacktype1 != 6, 0, GTD$kidnap ) )
+
+
+
+```
+## Regression
+
+Table 4 shows the regression outputs for the variable’s robbery, extortion and kidnaping (with economic aims), coded as explained in the previous section. The dependent variable is territorial control, coded as 1 if the group does have control and as 0 other ways. In Model 1 a *graded logistic regression* without any controls is applied. Robbery is significant with a 99% confidence and has a negative effect on territorial control, this is driven almost exclusively by the incidents involving bank robberies, that, as showed in table 3, are very distinctive of terrorist organizations. Kidnapping with economic aims is also significant at a 99% level of confidence but has a positive coefficient on territorial control.  In model 2 controls for both year and country effects are added, robbery keeps its negative and significant coefficient, while kidnapping also maintains its negative coefficient, but drops its significance to 95%.
+
+
+```{r REGRESSIONS, results='asis', echo=FALSE}
+model_1 <- GTD %>%
+  mutate(year_factor = as.factor(iyear),
+         country_factor = as.factor(country.x),
+         control = as.factor(control)) %>%
+  glm(control ~ robbery  + extortion + kidnap, family = "binomial", data = .)
+
+model_2 <- GTD %>%
+  mutate(year_factor = as.factor(iyear),
+         country_factor = as.factor(country.x),
+         control = as.factor(control)) %>%
+  glm(control ~ robbery  + extortion + kidnap + year_factor + country_factor, family = "binomial", data = .)
+
+
+
+stargazer::stargazer(model_1, model_2,
+                     digits = 3, type = 'latex', omit = c("year_factor", "country_factor"))
+
+
+
+```
+
+# Conclusions
+
+The main objective of the paper, to quantitatively test if robberies committed by rebel organizations are linked to their lack of territorial control, has been accomplished.  Incidents involving banks registered in the GTD are mostly committed by terrorist groups without territorial control, as the odds ratio of 18.3 showed in the text analysis. The logistic regressions support these results, as committing robberies decrease the chances of a group having territorial control with a 99% of confidence. These results keep their significance one’s country and year fixed effects have been introduced. Kidnaping with economic aims, coded partly using text analysis, shows a positive effect on territorial control. Although this is contradictory with some of the previous research, all the odds ratios for words related to kidnapping have coefficients below 1, indicating that they are more prevalent among summaries describing actions of groups with territorial control. Furthermore, kidnapping with economic aims yields a positive result in the logistic regression analysis, and maintains its significance at 95% confidence even after controlling for country and fixed effects. Regarding extortion, the odds ratios of all words linked to extortion have been greater than the ones of kidnaping, but all of them are still below one. In the regression analysis there was no statistically significant effect found. This suggest that as an activity which requires an intermediate level of sophistication, and is in between kidnappings and robbery, plain extortion is used by both groups with territorial control and without.  Finally, the analysis of the words with the highest and the lowest odds ratios, suggest that a key element distinguishing actions of rebel groups with territorial control and terrorist groups, is that the later have a strong interest in publicizing their activities, while this is rather irrelevant for the former.
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+# *Bibliography*
+*Luis de la Calle & Ignacio Sánchez Cuenca. A THEORY OF TERRORISM. April 2021. Carlos III-Juan March Institute of Social Sciences*
+
+
