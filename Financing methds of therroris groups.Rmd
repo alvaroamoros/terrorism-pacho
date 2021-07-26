@@ -1,5 +1,6 @@
 ---
 title: "Financing sources of rebel groups"
+subtitle: "Working paper"
 author: "Álvaro Ámoros Rodríguez"
 date: "28/6/2021"
 output:
@@ -10,6 +11,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+# Loading libraries and packages
 knitr::opts_chunk$set(echo = TRUE)
 pkgs <- c('knitr', 'stargazer')
 repmis::LoadandCite(pkgs, file = 'Rpackages.bib')
@@ -25,7 +27,7 @@ library(stargazer)
 library(gridExtra)
 
 
-
+# Max number of digits
 options(digits = 2)
 
 ```
@@ -55,8 +57,8 @@ GTD_groups <- GTD_groups[-314,] # The same terrorist group appears twice.
 
 
 # Merge the dataset by name
-GTD <- merge(GTD_attacks, GTD_groups, by = "gname")
-
+GTD <- merge(GTD_attacks, GTD_groups, by = "gname")d
+ 
 # Drop cases withput description
 GTD <- GTD %>%
   filter(!is.na(summary),
@@ -113,7 +115,6 @@ Graph 2 shows the proportion of attacks committed by rebel groups with and witho
 
 
 ```{r GRAPH 1, echo=FALSE}
-
 graph_1 <- GTD %>%
   mutate(control = as.character(control)) %>%
   count(control, iyear) %>%
@@ -162,10 +163,6 @@ graph_3 <- GTD %>%
   theme_minimal() +
   labs(x = "Year", y = "% of attacks", color = "")  
 
-
-
-
-
 ```
 
 ```{r GRAPH 2, echo=FALSE, fig.height=6, fig.width=12, fig.align="center"}
@@ -201,6 +198,7 @@ summary_words <- GTD %>%
   mutate(summary = str_replace_all(summary, single.pattern , ""))  %>%
   unnest_tokens(word, summary, token = "words")
 
+# CHECK IF THIS IS ACTUALLY NECESARY
 summary_words <- summary_words %>%
   filter(!word %in% stop_words$word & !str_detect(word, "^\\d+$")) %>%
   mutate(word = str_replace(word, "^'", ""))
@@ -229,11 +227,8 @@ control_or %>% filter(No_territroail_con + Territorial_con > 1000 & No_territroa
   arrange(desc(or))%>% head(5) %>%  knitr::kable(caption = "Highest ratio. Groups without territorial control", align = "l", col.names  = c("Word", "N. Control", "N. No Control","Odds Ratio"))
 
 
-
-
 control_or %>% filter(No_territroail_con + Territorial_con > 1000 & No_territroail_con >100 & Territorial_con > 100) %>%
   arrange((or)) %>%  head(5) %>%  knitr::kable(caption = "Lowest ratio. Groups without territorial control", align = "l", col.names  = c("Word", "N. Control", "N. No Control","Odds Ratio"))
-
 
 
 
@@ -266,11 +261,9 @@ Table 3 includes the frequencies and odds ratios of al the words previously ment
 stealing <- c("bank", "robbery", "theft", "break-in", "burglary", "heist", "looting", "larceny")
 extortion <- c("extortion", "shakedown", "money", "payment")
 kidnap <- c("kidnap", "kidnapping", "capture", "hijack", "abducted")
-all_words <- c("bank", "robbery", "theft", "break-in", "burglary", "heist", "looting", "larceny", "extortion", "shakedown", "money", "payment",
-               "kidnap", "kidnapping", "capture", "hijack", "abducted", "abduction")
+all_words <- c("bank", "robbery", "theft", "break-in", "burglary", "heist", "looting", "larceny", "extortion", "shakedown", "money", "payment","kidnap", "kidnapping", "capture", "hijack", "abducted", "abduction")
 
 # Odds ration stelaing
-
 x <- control_or %>% filter(word %in% all_words) %>%
   filter( (Territorial_con + No_territroail_con) > 30) %>%
   arrange(desc(or))
@@ -281,7 +274,7 @@ y <- control_or %>% filter(word %in% extortion ) %>%
   arrange(desc(or))
     
 z <- control_or %>% filter(word %in% kidnap ) %>%
-  filter( (Territorial_con + No_territroail_con) > 10) %>%
+  filter( (Territorial_con + No_territroail_con) > 10) %>%e
   arrange(desc(or))
 
 rbind(x) %>%
@@ -290,7 +283,6 @@ rbind(x) %>%
 
 
 ```
-
 
 
 
@@ -358,12 +350,10 @@ GTD$kidnap[t] <- 1
 GTD <- GTD %>%
   mutate(kidnap = ifelse(GTD$attacktype1 != 6, 0, GTD$kidnap ) )
 
-
-
 ```
 ## Regression
 
-Table 4 shows the regression outputs for the variable’s robbery, extortion and kidnaping (with economic aims), coded as explained in the previous section. The dependent variable is territorial control, coded as 1 if the group does have control and as 0 other ways. In Model 1 a *graded logistic regression* without any controls is applied. Robbery is significant with a 99% confidence and has a negative effect on territorial control, this is driven almost exclusively by the incidents involving bank robberies, that, as showed in table 3, are very distinctive of terrorist organizations. Kidnapping with economic aims is also significant at a 99% level of confidence but has a positive coefficient on territorial control.  In model 2 controls for both year and country effects are added, robbery keeps its negative and significant coefficient, while kidnapping also maintains its negative coefficient, but drops its significance to 95%.
+Table 4 shows the regression outputs for the variable’s robbery, extortion and kidnapping- (with economic aims), coded as explained in the previous section. The dependent variable is territorial control, coded as 1 if the group does have control and as 0 other ways. In Model 1 a *graded logistic regression* without any controls is applied. Robbery is significant with a 99% confidence and has a negative effect on territorial control, this is driven almost exclusively by the incidents involving bank robberies, that, as showed in table 3, are very distinctive of terrorist organizations. Kidnapping with economic aims is also significant at a 99% level of confidence but has a positive coefficient on territorial control.  In model 2 controls for both year and country effects are added, robbery keeps its negative and significant coefficient, while kidnapping also maintains its negative coefficient, but drops its significance to 95%.
 
 
 ```{r REGRESSIONS, results='asis', echo=FALSE}
