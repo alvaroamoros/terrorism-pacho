@@ -15,7 +15,7 @@ library(dplyr)
 library(ggplot2)
 library(scales)
 library(tidytext)
-library(stargazer)
+ library(stargazer)
 library(gridExtra)
 
 # Max number of digits
@@ -121,9 +121,9 @@ grid.arrange(graph_1, graph_2, top= "Incidence of attacks", ncol =2)
 # Establish regexp patterns to try to ignore irrelevant data like dates or numbers
 date.pattern <- ' ?(0|1)?[1-9]/([0-9]{4}|[0-9]{2}) ?'
 number.pattern <- '[\\d-]'
-single.pattern <- "(^| ).( |$)" # Pattern to delete siggle characters
+single.pattern <- "(^| ).( |$)" # Pattern to delete single characters
 
-# Create a dataset with all the words as rows
+# Create a data set with all the words as rows
 summary_words <- GTD %>%
   mutate(summary = str_replace_all(summary, date.pattern , ""))  %>% # First we delete all the words present in the 
   mutate(summary = str_replace_all(summary, number.pattern , ""))  %>% # previously defined patterns
